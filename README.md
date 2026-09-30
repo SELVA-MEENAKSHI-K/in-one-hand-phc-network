@@ -5,7 +5,9 @@
 ---
 
 ## 🌐 Live Prototype Access
-- **Local Dev Server:** [http://127.0.0.1:5173/](http://127.0.0.1:5173/)
+- **🚀 Live Production Website:** [https://in-one-hand-phc-network-eosi.vercel.app](https://in-one-hand-phc-network-eosi.vercel.app)
+- **📦 GitHub Repository:** [https://github.com/SELVA-MEENAKSHI-K/in-one-hand-phc-network](https://github.com/SELVA-MEENAKSHI-K/in-one-hand-phc-network)
+- **💻 Local Dev Server:** [http://127.0.0.1:5173/](http://127.0.0.1:5173/)
 - **Technology Stack:** React 19, Vite 8, Recharts, Lucide Icons, HTML5-QRCode, Canvas-Confetti, Vanilla CSS Design System.
 
 ---
