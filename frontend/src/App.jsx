@@ -16,6 +16,7 @@ import { ReportsAudit } from './components/ReportsAudit';
 import { FederatedLearningView } from './components/FederatedLearningView';
 import { OnboardingModal } from './components/OnboardingModal';
 import { DemoChecklistModal } from './components/DemoChecklistModal';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import {
   AlertCircle,
   CheckCircle,
@@ -111,71 +112,73 @@ function MainApp() {
             isSidebarCollapsed={isSidebarCollapsed}
           />
 
-          {/* Main Tab Content — All Modules */}
+          {/* Main Tab Content — All Modules protected by ErrorBoundary */}
           <main className="app-main-content">
-            {/* Setup: PHC Onboarding & Verification (admin roles only; role guard redirects others) */}
-            {activeTab === 'auth' && canAccessTab('auth') && (
-              <AuthScreen setActiveTab={setActiveTab} />
-            )}
+            <ErrorBoundary key={activeTab} moduleTitle={`Tab: ${activeTab.toUpperCase()}`}>
+              {/* Setup: PHC Onboarding & Verification (admin roles only; role guard redirects others) */}
+              {activeTab === 'auth' && canAccessTab('auth') && (
+                <AuthScreen setActiveTab={setActiveTab} />
+              )}
 
-            {/* Screen 2: PHC Network Dashboard */}
-            {activeTab === 'dashboard' && (
-              <NetworkDashboard
-                setActiveTab={setActiveTab}
-                onSelectPhc={() => {
-                  setActiveTab('phc-details');
-                }}
-              />
-            )}
+              {/* Screen 2: PHC Network Dashboard */}
+              {activeTab === 'dashboard' && (
+                <NetworkDashboard
+                  setActiveTab={setActiveTab}
+                  onSelectPhc={() => {
+                    setActiveTab('phc-details');
+                  }}
+                />
+              )}
 
-            {/* Screen 3: PHC Details and Resource Availability */}
-            {activeTab === 'phc-details' && (
-              <PHCDetails setActiveTab={setActiveTab} />
-            )}
+              {/* Screen 3: PHC Details and Resource Availability */}
+              {activeTab === 'phc-details' && (
+                <PHCDetails setActiveTab={setActiveTab} />
+              )}
 
-            {/* Screen 4: Medicine QR Check-In and Check-Out */}
-            {activeTab === 'medicines' && <MedicineManagement />}
+              {/* Screen 4: Medicine QR Check-In and Check-Out */}
+              {activeTab === 'medicines' && <MedicineManagement />}
 
-            {/* Screen 5: Staff Attendance QR */}
-            {activeTab === 'attendance' && <StaffAttendance />}
+              {/* Screen 5: Staff Attendance QR */}
+              {activeTab === 'attendance' && <StaffAttendance />}
 
-            {/* Screen 6: Notifications and Alerts */}
-            {activeTab === 'alerts' && (
-              <AlertsCenter
-                setActiveTab={setActiveTab}
-                onOpenTransferModal={() => setActiveTab('transfers')}
-                onPreFillTransfer={(data) => setTransferPreFill(data)}
-              />
-            )}
+              {/* Screen 6: Notifications and Alerts */}
+              {activeTab === 'alerts' && (
+                <AlertsCenter
+                  setActiveTab={setActiveTab}
+                  onOpenTransferModal={() => setActiveTab('transfers')}
+                  onPreFillTransfer={(data) => setTransferPreFill(data)}
+                />
+              )}
 
-            {/* PHC Network Communication and Transfer Requests */}
-            {activeTab === 'transfers' && (
-              <TransfersHub
-                preFillData={transferPreFill}
-                clearPreFillData={() => setTransferPreFill(null)}
-                setActiveTab={setActiveTab}
-              />
-            )}
+              {/* PHC Network Communication and Transfer Requests */}
+              {activeTab === 'transfers' && (
+                <TransfersHub
+                  preFillData={transferPreFill}
+                  clearPreFillData={() => setTransferPreFill(null)}
+                  setActiveTab={setActiveTab}
+                />
+              )}
 
-            {/* Screen 8: Reports and Activity History */}
-            {activeTab === 'reports' && <ReportsAudit />}
+              {/* Screen 8: Reports and Activity History */}
+              {activeTab === 'reports' && <ReportsAudit />}
 
-            {/* Supplementary: Beds & Unified Resources Matrix */}
-            {activeTab === 'resources' && <UnifiedResources setActiveTab={setActiveTab} />}
+              {/* Supplementary: Beds & Unified Resources Matrix */}
+              {activeTab === 'resources' && <UnifiedResources setActiveTab={setActiveTab} />}
 
-            {/* Supplementary: Demand Forecast */}
-            {activeTab === 'forecast' && (
-              <DemandForecast
-                setActiveTab={setActiveTab}
-                onPreFillTransfer={(data) => {
-                  setTransferPreFill(data);
-                  setActiveTab('transfers');
-                }}
-              />
-            )}
+              {/* Supplementary: Demand Forecast */}
+              {activeTab === 'forecast' && (
+                <DemandForecast
+                  setActiveTab={setActiveTab}
+                  onPreFillTransfer={(data) => {
+                    setTransferPreFill(data);
+                    setActiveTab('transfers');
+                  }}
+                />
+              )}
 
-            {/* Supplementary: Privacy-Preserving Federated Learning */}
-            {activeTab === 'federated' && <FederatedLearningView />}
+              {/* Supplementary: Privacy-Preserving Federated Learning */}
+              {activeTab === 'federated' && <FederatedLearningView />}
+            </ErrorBoundary>
           </main>
 
           {/* MOBILE ONE-HANDED BOTTOM NAVIGATION THUMB BAR */}
@@ -315,8 +318,10 @@ function MainApp() {
 
 export default function App() {
   return (
-    <AppProvider>
-      <MainApp />
-    </AppProvider>
+    <ErrorBoundary moduleTitle="In One Hand PHC Application">
+      <AppProvider>
+        <MainApp />
+      </AppProvider>
+    </ErrorBoundary>
   );
 }

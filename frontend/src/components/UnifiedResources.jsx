@@ -14,7 +14,7 @@ import {
 import { useApp } from '../context/AppContext';
 
 export const UnifiedResources = ({ setActiveTab }) => {
-  const { currentPhc, updateBeds, updateFootfall } = useApp();
+  const { currentPhc, updateBeds, updateFootfall, isEvaluationMode } = useApp();
 
   if (!currentPhc) return <div>Loading Resources...</div>;
 

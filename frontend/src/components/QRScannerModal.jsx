@@ -70,13 +70,18 @@ export const QRScannerModal = ({
 
   // Handle successful scan
   const handleSuccess = useCallback((codeText) => {
-    setScannedResult(codeText);
+    if (!codeText || typeof codeText !== 'string') {
+      setCameraError('Scanned QR code contains unreadable or empty content.');
+      return;
+    }
+    const sanitizedText = codeText.trim();
+    setScannedResult(sanitizedText);
     setScannerState('scan_success');
     stopCamera();
     setTimeout(() => {
-      onScanSuccess(codeText);
+      onScanSuccess(sanitizedText);
       if (onManualSelect) {
-        onManualSelect(codeText);
+        onManualSelect(sanitizedText);
       }
       onClose();
     }, 600);
@@ -314,6 +319,18 @@ export const QRScannerModal = ({
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setCameraError('Only image files (PNG, JPG, WebP) are supported for QR scanning.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    if (file.size > 15 * 1024 * 1024) {
+      setCameraError('The selected image is too large (maximum size 15MB).');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
 
     setCameraError(null);
     try {

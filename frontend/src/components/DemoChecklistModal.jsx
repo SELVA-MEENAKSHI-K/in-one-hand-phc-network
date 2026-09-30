@@ -8,6 +8,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { safeStorageGet, safeStorageSet, safeStorageRemove } from '../utils/storage';
 
 export const DemoChecklistModal = ({
   isOpen,
@@ -19,8 +20,7 @@ export const DemoChecklistModal = ({
   const { isOffline, toggleOfflineMode } = useApp();
 
   const [checkedItems, setCheckedItems] = useState(() => {
-    const saved = localStorage.getItem('inonehand_demo_checklist');
-    return saved ? JSON.parse(saved) : {};
+    return safeStorageGet('inonehand_demo_checklist', {});
   });
 
   if (!isOpen) return null;
@@ -28,14 +28,14 @@ export const DemoChecklistModal = ({
   const toggleCheck = (id) => {
     setCheckedItems((prev) => {
       const updated = { ...prev, [id]: !prev[id] };
-      localStorage.setItem('inonehand_demo_checklist', JSON.stringify(updated));
+      safeStorageSet('inonehand_demo_checklist', updated);
       return updated;
     });
   };
 
   const resetChecklist = () => {
     setCheckedItems({});
-    localStorage.removeItem('inonehand_demo_checklist');
+    safeStorageRemove('inonehand_demo_checklist');
   };
 
   const checklistItems = [

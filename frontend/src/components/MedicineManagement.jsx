@@ -17,7 +17,7 @@ import { useApp } from '../context/AppContext';
 import { QRScannerModal } from './QRScannerModal';
 
 export const MedicineManagement = () => {
-  const { currentPhc, updateMedicineStock } = useApp();
+  const { currentPhc, updateMedicineStock, showToast } = useApp();
 
   const [activeTab, setActiveTab] = useState('inventory'); // 'inventory' | 'checkin' | 'checkout'
   const [searchTerm, setSearchTerm] = useState('');
@@ -51,17 +51,32 @@ export const MedicineManagement = () => {
   // Handle QR scan decoded text
   // Format: "MED:med-pcm-500:PCM-2026-A1:2027-08-15:Paracetamol 500mg"
   const handleScanSuccess = (decodedText) => {
+    if (!decodedText || typeof decodedText !== 'string') {
+      showToast?.('Invalid QR payload', 'error');
+      return;
+    }
+
     let medId = '';
     let batch = '';
     let expiry = '';
 
     if (decodedText.startsWith('MED:')) {
       const parts = decodedText.split(':');
-      medId = parts[1];
+      medId = parts[1] || '';
       batch = parts[2] || '';
       expiry = parts[3] || '';
     } else {
-      medId = decodedText;
+      medId = decodedText.trim();
+    }
+
+    if (!medId) {
+      showToast?.('Unable to parse medicine ID from scanned code', 'warning');
+      return;
+    }
+
+    const matchedMed = currentPhc.medicines.find((m) => m.id === medId);
+    if (!matchedMed) {
+      showToast?.(`Medicine ID "${medId}" not found in current inventory`, 'warning');
     }
 
     if (scannerMode === 'checkin') {
@@ -78,19 +93,27 @@ export const MedicineManagement = () => {
   // Submit Medicine Check-In
   const handleCheckInSubmit = (e) => {
     e.preventDefault();
-    if (!inMedicineId || !inQuantity || Number(inQuantity) <= 0) return;
+    if (!inMedicineId) {
+      showToast?.('Please select a medicine for check-in', 'warning');
+      return;
+    }
+
+    const addQty = parseInt(inQuantity, 10);
+    if (isNaN(addQty) || addQty <= 0) {
+      showToast?.('Please enter a valid check-in quantity greater than 0', 'warning');
+      return;
+    }
 
     const med = currentPhc.medicines.find((m) => m.id === inMedicineId);
     const prevQty = med ? med.quantity : 0;
-    const addQty = Number(inQuantity);
 
     const res = updateMedicineStock(currentPhc.id, inMedicineId, addQty, {
-      batchNumber: inBatch || med?.batchNumber || 'BATCH-STD',
-      expiryDate: inExpiry || med?.expiryDate || '2027-12-31',
+      batchNumber: (inBatch || '').trim() || med?.batchNumber || 'BATCH-STD',
+      expiryDate: (inExpiry || '').trim() || med?.expiryDate || '2027-12-31',
       source: inSource
     });
 
-    if (res.success) {
+    if (res?.success) {
       setSuccessReceipt({
         type: 'Medicine Check-In',
         medicineName: med?.name || 'Medicine',
@@ -98,7 +121,7 @@ export const MedicineManagement = () => {
         quantityAdded: addQty,
         previousStock: prevQty,
         updatedStock: prevQty + addQty,
-        batchNumber: inBatch || med?.batchNumber || 'BATCH-STD',
+        batchNumber: (inBatch || '').trim() || med?.batchNumber || 'BATCH-STD',
         source: inSource,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
       });
@@ -113,13 +136,26 @@ export const MedicineManagement = () => {
   // Open Check-Out Confirmation Modal
   const handleCheckOutPreSubmit = (e) => {
     e.preventDefault();
-    if (!outMedicineId || !outQuantity || Number(outQuantity) <= 0) return;
+    if (!outMedicineId) {
+      showToast?.('Please select a medicine for dispensing', 'warning');
+      return;
+    }
+
+    const deductQty = parseInt(outQuantity, 10);
+    if (isNaN(deductQty) || deductQty <= 0) {
+      showToast?.('Please enter a valid dispensing quantity greater than 0', 'warning');
+      return;
+    }
 
     const med = currentPhc.medicines.find((m) => m.id === outMedicineId);
-    if (!med) return;
+    if (!med) {
+      showToast?.('Selected medicine was not found in inventory', 'error');
+      return;
+    }
 
     // Strict negative stock check
-    if (Number(outQuantity) > med.quantity) {
+    if (deductQty > med.quantity) {
+      showToast?.(`Cannot dispense ${deductQty} units. Only ${med.quantity} available in current stock.`, 'warning');
       return; // blocked in UI
     }
 
@@ -132,11 +168,12 @@ export const MedicineManagement = () => {
     if (!med) return;
 
     const prevQty = med.quantity;
-    const deductQty = Number(outQuantity);
+    const deductQty = parseInt(outQuantity, 10);
+    if (isNaN(deductQty) || deductQty <= 0) return;
 
     const res = updateMedicineStock(currentPhc.id, outMedicineId, -deductQty, {
-      recipient: outRecipient,
-      notes: outNotes
+      recipient: (outRecipient || '').trim() || 'Outpatient Pharmacy Counter',
+      notes: (outNotes || '').trim()
     });
 
     setIsCheckoutConfirmOpen(false);

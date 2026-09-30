@@ -25,6 +25,7 @@ const STORAGE_KEYS = {
 };
 
 import { VALID_TABS, ROLE_HOME, ROLE_TABS, getUserNameForRole, getRoleTitle } from './roleConfig';
+import { safeStorageGet, safeStorageSet, safeStorageClear } from '../utils/storage';
 
 const readHashTab = () => {
   if (typeof window === 'undefined') return null;
@@ -35,70 +36,61 @@ const readHashTab = () => {
 export const AppProvider = ({ children }) => {
   // Theme state: default 'light' per prompt design guidelines
   const [theme, setTheme] = useState(() => {
-    return localStorage.getItem(STORAGE_KEYS.THEME) || 'light';
+    return safeStorageGet(STORAGE_KEYS.THEME, 'light', false);
   });
 
   // Responsive Viewport Preview Mode: 'fluid' | 'desktop' (1440px) | 'tablet' (768px) | 'mobile' (390px)
   const [viewportMode, setViewportMode] = useState('fluid');
 
   // Active top-level screen tab
-  const [isSignedIn, setIsSignedIn] = useState(() => localStorage.getItem(STORAGE_KEYS.SIGNED_IN) === 'true');
+  const [isSignedIn, setIsSignedIn] = useState(() => safeStorageGet(STORAGE_KEYS.SIGNED_IN, 'false', false) === 'true');
   const [activeTab, setActiveTab] = useState(() => readHashTab() || 'dashboard');
 
-  // Load initial state with localStorage fallback
+  // Load initial state with safe storage fallback
   const [phcs, setPhcs] = useState(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.PHCS);
-    return saved ? JSON.parse(saved) : INITIAL_PHCS;
+    return safeStorageGet(STORAGE_KEYS.PHCS, INITIAL_PHCS);
   });
 
   const [transfers, setTransfers] = useState(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.TRANSFERS);
-    return saved ? JSON.parse(saved) : INITIAL_TRANSFERS;
+    return safeStorageGet(STORAGE_KEYS.TRANSFERS, INITIAL_TRANSFERS);
   });
 
   const [alerts, setAlerts] = useState(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.ALERTS);
-    return saved ? JSON.parse(saved) : INITIAL_ALERTS;
+    return safeStorageGet(STORAGE_KEYS.ALERTS, INITIAL_ALERTS);
   });
 
   const [auditLogs, setAuditLogs] = useState(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.LOGS);
-    if (!saved) return INITIAL_AUDIT_LOGS;
-    try {
-      const parsed = JSON.parse(saved);
-      // Upgrade from previous 5-item log cache to the rich multi-period 16-item mock logs
-      if (Array.isArray(parsed) && parsed.length >= INITIAL_AUDIT_LOGS.length && parsed[0]?.district) {
-        return parsed;
-      }
-      return INITIAL_AUDIT_LOGS;
-    } catch {
-      return INITIAL_AUDIT_LOGS;
+    const parsed = safeStorageGet(STORAGE_KEYS.LOGS, null);
+    if (!parsed) return INITIAL_AUDIT_LOGS;
+    // Upgrade from previous 5-item log cache to the rich multi-period 16-item mock logs
+    if (Array.isArray(parsed) && parsed.length >= INITIAL_AUDIT_LOGS.length && parsed[0]?.district) {
+      return parsed;
     }
+    return INITIAL_AUDIT_LOGS;
   });
 
   const [offlineQueue, setOfflineQueue] = useState(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.OFFLINE_QUEUE);
-    return saved ? JSON.parse(saved) : [];
+    return safeStorageGet(STORAGE_KEYS.OFFLINE_QUEUE, []);
   });
 
   const [language, setLanguage] = useState(() => {
-    return localStorage.getItem(STORAGE_KEYS.LANGUAGE) || 'en';
+    return safeStorageGet(STORAGE_KEYS.LANGUAGE, 'en', false);
   });
 
   // Current Role: 'phc_staff' | 'phc_admin' | 'district_officer' | 'platform_admin'
   const [currentRole, setCurrentRole] = useState(() => {
-    return localStorage.getItem(STORAGE_KEYS.ROLE) || 'phc_staff';
+    return safeStorageGet(STORAGE_KEYS.ROLE, 'phc_staff', false);
   });
 
   // Active PHC ID for staff / PHC admin view
   const [currentPhcId, setCurrentPhcId] = useState(() => {
-    return localStorage.getItem(STORAGE_KEYS.ACTIVE_PHC) || 'phc-medavakkam';
+    return safeStorageGet(STORAGE_KEYS.ACTIVE_PHC, 'phc-medavakkam', false);
   });
 
   // Apply theme to html element
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem(STORAGE_KEYS.THEME, theme);
+    safeStorageSet(STORAGE_KEYS.THEME, theme, false);
   }, [theme]);
 
   const toggleTheme = () => {
@@ -116,14 +108,13 @@ export const AppProvider = ({ children }) => {
         return true;
       }
     }
-    const saved = localStorage.getItem(STORAGE_KEYS.EVALUATION_MODE);
-    return saved === 'true';
+    return safeStorageGet(STORAGE_KEYS.EVALUATION_MODE, 'false', false) === 'true';
   });
 
   const toggleEvaluationMode = () => {
     setIsEvaluationMode((prev) => {
       const next = !prev;
-      localStorage.setItem(STORAGE_KEYS.EVALUATION_MODE, String(next));
+      safeStorageSet(STORAGE_KEYS.EVALUATION_MODE, String(next), false);
       if (next) {
         showToast('Evaluation Mode enabled: Demo Role Switcher, Checklist, and Data Reset are available.', 'info');
       } else {
@@ -144,37 +135,37 @@ export const AppProvider = ({ children }) => {
     status: 'pass'
   });
 
-  // Sync to localStorage
+  // Sync to safe storage
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.PHCS, JSON.stringify(phcs));
+    safeStorageSet(STORAGE_KEYS.PHCS, phcs);
   }, [phcs]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.TRANSFERS, JSON.stringify(transfers));
+    safeStorageSet(STORAGE_KEYS.TRANSFERS, transfers);
   }, [transfers]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.ALERTS, JSON.stringify(alerts));
+    safeStorageSet(STORAGE_KEYS.ALERTS, alerts);
   }, [alerts]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(auditLogs));
+    safeStorageSet(STORAGE_KEYS.LOGS, auditLogs);
   }, [auditLogs]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.OFFLINE_QUEUE, JSON.stringify(offlineQueue));
+    safeStorageSet(STORAGE_KEYS.OFFLINE_QUEUE, offlineQueue);
   }, [offlineQueue]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.LANGUAGE, language);
+    safeStorageSet(STORAGE_KEYS.LANGUAGE, language, false);
   }, [language]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.ROLE, currentRole);
+    safeStorageSet(STORAGE_KEYS.ROLE, currentRole, false);
   }, [currentRole]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.ACTIVE_PHC, currentPhcId);
+    safeStorageSet(STORAGE_KEYS.ACTIVE_PHC, currentPhcId, false);
   }, [currentPhcId]);
 
   // Derived active (operational) & pending PHCs
@@ -932,14 +923,14 @@ export const AppProvider = ({ children }) => {
   // Reset to default seed data
   const resetToDefaultData = () => {
     const wasEval = isEvaluationMode;
-    localStorage.clear();
+    safeStorageClear();
     setPhcs(INITIAL_PHCS);
     setTransfers(INITIAL_TRANSFERS);
     setAlerts(INITIAL_ALERTS);
     setAuditLogs(INITIAL_AUDIT_LOGS);
     setOfflineQueue([]);
     if (wasEval) {
-      localStorage.setItem(STORAGE_KEYS.EVALUATION_MODE, 'true');
+      safeStorageSet(STORAGE_KEYS.EVALUATION_MODE, 'true', false);
     }
     showToast('System reset to default clean sample data', 'info');
   };
@@ -950,13 +941,13 @@ export const AppProvider = ({ children }) => {
   const signIn = (role, phcId) => {
     setCurrentRole(role);
     if (phcId) setCurrentPhcId(phcId);
-    localStorage.setItem(STORAGE_KEYS.SIGNED_IN, 'true');
+    safeStorageSet(STORAGE_KEYS.SIGNED_IN, 'true', false);
     setIsSignedIn(true);
     setActiveTab(ROLE_HOME[role] || 'dashboard');
   };
 
   const signOut = () => {
-    localStorage.setItem(STORAGE_KEYS.SIGNED_IN, 'false');
+    safeStorageSet(STORAGE_KEYS.SIGNED_IN, 'false', false);
     setIsSignedIn(false);
     window.location.hash = '';
   };

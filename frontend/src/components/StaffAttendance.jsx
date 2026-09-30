@@ -23,7 +23,8 @@ export const StaffAttendance = () => {
     currentPhc,
     recordStaffAttendance,
     addStaffMember,
-    isEvaluationMode
+    isEvaluationMode,
+    showToast
   } = useApp();
 
   const [attendanceMode, setAttendanceMode] = useState('Check In'); // 'Check In' | 'Check Out'
@@ -49,14 +50,24 @@ export const StaffAttendance = () => {
 
   if (!currentPhc) return <div>Loading Staff Attendance Roster...</div>;
 
-  const totalStaff = currentPhc.staff.length;
-  const presentStaff = currentPhc.staff.filter((s) => s.status === 'Present');
+  const totalStaff = currentPhc.staff?.length || 0;
+  const presentStaff = (currentPhc.staff || []).filter((s) => s.status === 'Present');
   const attendancePercentage = totalStaff > 0 ? Math.round((presentStaff.length / totalStaff) * 100) : 0;
-  const isGapAlert = attendancePercentage < currentPhc.staffingThreshold;
+  const isGapAlert = attendancePercentage < (currentPhc.staffingThreshold || 80);
 
   // Handle QR scan decoded text
   // QR format: "STAFF:MEDAVAKKAM:stf-med-01:Dr. Priya Raman"
   const handleScanSuccess = (decodedText) => {
+    if (!decodedText || typeof decodedText !== 'string') {
+      showToast?.('Invalid QR code format', 'error');
+      return;
+    }
+
+    if (!currentPhc.staff || currentPhc.staff.length === 0) {
+      showToast?.('No staff roster found for this PHC', 'warning');
+      return;
+    }
+
     let staffObj = null;
 
     if (decodedText.startsWith('STAFF:')) {
@@ -64,14 +75,15 @@ export const StaffAttendance = () => {
       const staffId = parts[2];
       staffObj = currentPhc.staff.find((s) => s.id === staffId);
     } else {
+      const query = decodedText.trim().toLowerCase();
       staffObj = currentPhc.staff.find(
-        (s) => s.id === decodedText || s.qrCode === decodedText || s.name.includes(decodedText)
+        (s) => s.id === decodedText || s.qrCode === decodedText || (query.length >= 3 && s.name.toLowerCase().includes(query))
       );
     }
 
     if (!staffObj) {
-      // Fallback to first staff
-      staffObj = currentPhc.staff[0];
+      showToast?.('Staff member not found in this PHC roster. Please select manually or verify the QR code.', 'warning');
+      return;
     }
 
     // Set pending confirmation dialog (Screen 5 requirement)
@@ -127,11 +139,15 @@ export const StaffAttendance = () => {
   // Submit add new staff
   const handleAddStaffSubmit = (e) => {
     e.preventDefault();
-    if (!newStaffName) return;
+    const trimmedName = newStaffName.trim();
+    if (!trimmedName) {
+      showToast?.('Please enter a valid staff name', 'warning');
+      return;
+    }
     addStaffMember(currentPhc.id, {
-      name: newStaffName,
+      name: trimmedName,
       role: newStaffRole,
-      phone: newStaffPhone
+      phone: newStaffPhone.trim()
     });
     setIsAddStaffOpen(false);
     setNewStaffName('');

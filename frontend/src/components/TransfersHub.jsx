@@ -27,7 +27,8 @@ export const TransfersHub = ({ preFillData, clearPreFillData, setActiveTab: setA
     dispatchTransfer,
     confirmReceiptTransfer,
     getRoleTitle,
-    isEvaluationMode
+    isEvaluationMode,
+    showToast
   } = useApp();
 
   const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL' | 'Pending Approval' | 'In Transit' | 'Delivered'
@@ -67,7 +68,21 @@ export const TransfersHub = ({ preFillData, clearPreFillData, setActiveTab: setA
 
   const handleRequestSubmit = (e) => {
     e.preventDefault();
-    if (!targetMedId || !targetQty || !targetSourceId) return;
+    if (!targetMedId || !targetQty || !targetSourceId) {
+      showToast?.('Please fill all required transfer fields', 'warning');
+      return;
+    }
+
+    if (targetSourceId === currentPhc.id) {
+      showToast?.('Source PHC cannot be the same as the requesting health centre', 'warning');
+      return;
+    }
+
+    const parsedQty = parseInt(targetQty, 10);
+    if (isNaN(parsedQty) || parsedQty <= 0) {
+      showToast?.('Please enter a valid transfer quantity greater than 0', 'warning');
+      return;
+    }
 
     const sourcePhc = phcs.find((p) => p.id === targetSourceId);
     const medObj = currentPhc.medicines.find((m) => m.id === targetMedId);
@@ -79,10 +94,10 @@ export const TransfersHub = ({ preFillData, clearPreFillData, setActiveTab: setA
       sourcePhcName: sourcePhc?.name || 'Neighbouring PHC',
       medicineId: targetMedId,
       medicineName: medObj?.name || 'Medicine',
-      quantity: Number(targetQty),
+      quantity: parsedQty,
       unit: medObj?.unit || 'Strips',
       urgency,
-      reason
+      reason: (reason || '').trim() || 'Urgent inter-PHC stock redistribution'
     });
 
     setIsModalOpen(false);
@@ -91,8 +106,12 @@ export const TransfersHub = ({ preFillData, clearPreFillData, setActiveTab: setA
 
   const handleEditSubmit = (e) => {
     e.preventDefault();
-    if (!editingTransfer || !editQty) return;
-    reviewTransfer(editingTransfer.id, 'edit', editNotes, Number(editQty));
+    const parsedEditQty = parseInt(editQty, 10);
+    if (!editingTransfer || isNaN(parsedEditQty) || parsedEditQty <= 0) {
+      showToast?.('Please enter a valid transfer quantity greater than 0', 'warning');
+      return;
+    }
+    reviewTransfer(editingTransfer.id, 'edit', editNotes, parsedEditQty);
     setEditingTransfer(null);
   };
 
